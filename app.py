@@ -15,7 +15,7 @@ api_key = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=api_key)
 
 # نستخدم gemini-1.5-flash كنموذج أساسي
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-1.0-pro')
 
 tab1, tab2 = st.tabs(["📤 رفع ملف", "📝 لصق بيانات"])
 df = None
