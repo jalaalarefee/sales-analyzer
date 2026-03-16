@@ -2,30 +2,29 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 
-st.set_page_config(page_title="محلل المبيعات", page_icon="📈")
-st.title("📈 نظام تحليل المبيعات الذكي")
+st.set_title("📈 نظام تحليل المبيعات الذكي")
 
-# تأكد من وضع GOOGLE_API_KEY في إعدادات الـ Secrets
-api_key = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=api_key)
+# 1. التحقق من وجود المفتاح في الـ Secrets
+if "GOOGLE_API_KEY" not in st.secrets:
+    st.error("خطأ: يرجى إضافة GOOGLE_API_KEY في إعدادات Secrets.")
+    st.stop()
 
-# نستخدم نموذج gemini-1.0-pro لضمان التوافق التام
-model = genai.GenerativeModel('gemini-1.0-pro')
+# 2. إعداد الاتصال
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-uploaded_file = st.file_uploader("📤 ارفع ملف المبيعات (CSV)", type="csv")
+# 3. استخدام نموذج gemini-pro (الأكثر استقراراً)
+model = genai.GenerativeModel('gemini-pro')
 
-if uploaded_file is not None:
+uploaded_file = st.file_uploader("ارفع ملف CSV", type="csv")
+
+if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    st.write("### بياناتك:")
-    st.dataframe(df)
+    st.write(df)
     
-    if st.button("تحليل الأسباب الجذرية"):
-        with st.spinner("جاري التحليل..."):
-            losses = df[df['profit'] < 0]
-            if losses.empty:
-                st.success("لا توجد خسائر.")
-            else:
-                prompt = f"حلل أسباب خسارة المنتجات التالية: {losses.to_string()}، وقدم نصائح عملية."
-                response = model.generate_content(prompt)
-                st.write("### 🧠 التحليل:")
-                st.write(response.text)
+    if st.button("تحليل"):
+        try:
+            losses = df[df['profit'] < 0].to_string()
+            response = model.generate_content(f"حلل أسباب الخسارة التالية: {losses}")
+            st.write(response.text)
+        except Exception as e:
+            st.error(f"خطأ: {e}")
