@@ -2,38 +2,37 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 
-st.title("📈 نظام تحليل المبيعات الذكي")
+st.title("📈 محلل المبيعات الذكي")
 
-# 1. إعداد الاتصال
-if "GOOGLE_API_KEY" in st.secrets:
-    try:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        model = genai.GenerativeModel('gemini-1.5-flash')
-    except Exception as e:
-        st.error(f"خطأ في إعداد الاتصال: {e}")
-        st.stop()
-else:
-    st.error("مفتاح GOOGLE_API_KEY غير موجود في الـ Secrets.")
+# 1. إعداد المفتاح
+if "GOOGLE_API_KEY" not in st.secrets:
+    st.error("يرجى إضافة GOOGLE_API_KEY في إعدادات الـ Secrets.")
     st.stop()
 
-# 2. واجهة رفع الملف
-uploaded_file = st.file_uploader("📤 ارفع ملف المبيعات (CSV)", type="csv")
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-if uploaded_file:
+# 2. كود ذكي لاختيار النموذج المتاح تلقائياً
+def get_best_model():
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            return genai.GenerativeModel(m.name)
+    return None
+
+model = get_best_model()
+
+uploaded_file = st.file_uploader("📤 ارفع ملف CSV", type="csv")
+
+if uploaded_file and model:
     df = pd.read_csv(uploaded_file)
-    st.write("### بياناتك:")
     st.dataframe(df)
     
-    if st.button("تحليل الأسباب الجذرية"):
-        with st.spinner("جاري التحليل..."):
-            try:
-                losses = df[df['profit'] < 0]
-                if losses.empty:
-                    st.success("تهانينا! لا توجد منتجات خاسرة.")
-                else:
-                    prompt = f"حلل أسباب الخسارة للمنتجات التالية: {losses.to_string()}، وقدم حلولاً عملية."
-                    response = model.generate_content(prompt)
-                    st.write("### 🧠 النتيجة:")
-                    st.write(response.text)
-            except Exception as e:
-                st.error(f"خطأ أثناء التحليل: {e}")
+    if st.button("تحليل الأسباب"):
+        try:
+            losses = df[df['profit'] < 0].to_string()
+            response = model.generate_content(f"حلل أسباب خسارة المنتجات: {losses}")
+            st.write("### 🧠 التحليل:")
+            st.write(response.text)
+        except Exception as e:
+            st.error(f"خطأ: {e}")
+elif not model:
+    st.error("لم يتم العثور على نموذج يدعم generateContent في حسابك.")
